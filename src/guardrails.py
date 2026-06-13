@@ -1,42 +1,32 @@
-import json
-from dataclasses import dataclass, field
+import csv
+import dataclasses
+import datetime
 from typing import List
 
-@dataclass
-class Guardrail:
-    name: str
-    description: str
-    source: str = "template"
-    fields: List[str] = field(default_factory=list)
+@dataclasses.dataclass
+class Violation:
+    timestamp: datetime.datetime
+    request_id: str
+    rule_id: str
+    action_taken: str
 
-class GuardrailLibrary:
-    def __init__(self):
-        self.guardrails = []
+class Guardrails:
+    def __init__(self, organization_scope: str):
+        self.organization_scope = organization_scope
+        self.violations = []
 
-    def add_guardrail(self, guardrail):
-        self.guardrails.append(guardrail)
+    def add_violation(self, violation: Violation):
+        self.violations.append(violation)
 
-    def import_template(self, template_name):
-        templates = {
-            "gdpr_pii_redaction": Guardrail("GDPR PII Redaction", "Redact personally identifiable information"),
-            "profanity_filter": Guardrail("Profanity Filter", "Filter out profanity"),
-            "data_retention": Guardrail("Data Retention", "Retain data for a specified period"),
-            "access_control": Guardrail("Access Control", "Control access to sensitive data"),
-            "encryption": Guardrail("Encryption", "Encrypt sensitive data"),
-        }
-        if template_name in templates:
-            return templates[template_name]
-        else:
-            raise ValueError("Template not found")
+    def export_violations(self, format: str = 'csv') -> str:
+        if format != 'csv':
+            raise ValueError('Only CSV format is supported')
 
-    def list_guardrails(self):
-        return self.guardrails
+        csv_data = 'timestamp,request_id,rule_id,action_taken\n'
+        for violation in self.violations:
+            csv_data += f'{violation.timestamp},{violation.request_id},{violation.rule_id},{violation.action_taken}\n'
 
-def main():
-    library = GuardrailLibrary()
-    library.add_guardrail(library.import_template("gdpr_pii_redaction"))
-    library.add_guardrail(library.import_template("profanity_filter"))
-    print(json.dumps([g.__dict__ for g in library.list_guardrails()], indent=4))
+        return csv_data
 
-if __name__ == "__main__":
-    main()
+    def filter_violations(self, start_date: datetime.datetime, end_date: datetime.datetime) -> List[Violation]:
+        return [v for v in self.violations if start_date <= v.timestamp <= end_date]
